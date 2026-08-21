@@ -137,3 +137,53 @@ alter table flags enable row level security;
 create policy "users can flag a catch"
   on flags for insert
   with check (auth.uid() = reporter_id);
+
+-- ============================================================
+-- ONBOARDING — tracks whether an account has dismissed the
+-- first-time intro popup, so it only ever shows once per account.
+-- ============================================================
+alter table profiles add column if not exists has_seen_intro boolean not null default false;
+
+-- ============================================================
+-- COMMENTS
+-- ============================================================
+create table if not exists comments (
+  id uuid primary key default gen_random_uuid(),
+  catch_id uuid references catches(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  text text not null check (char_length(text) <= 120 and char_length(text) > 0),
+  created_at timestamptz default now()
+);
+
+alter table comments enable row level security;
+
+create policy "comments are publicly readable"
+  on comments for select
+  using (true);
+
+create policy "users can post their own comments"
+  on comments for insert
+  with check (auth.uid() = user_id);
+
+create policy "users can delete their own comments"
+  on comments for delete
+  using (auth.uid() = user_id);
+
+-- ============================================================
+-- CATCH BLURB + LENGTH RANGE (22"-55")
+-- ============================================================
+alter table catches add column if not exists blurb text;
+alter table catches add constraint blurb_length_check check (blurb is null or char_length(blurb) <= 120);
+
+alter table catches drop constraint if exists catches_length_check;
+alter table catches add constraint catches_length_check check (length >= 22 and length <= 55);
+
+-- ============================================================
+-- PHOTO REQUIRED — enforced at the database level, not just the form
+-- ============================================================
+-- NOTE: this will fail if any existing rows already have a null
+-- photo_url (e.g. old test catches posted before this rule existed).
+-- If it errors, either delete those test rows first, or run:
+--   delete from catches where photo_url is null;
+-- before running the line below.
+alter table catches alter column photo_url set not null;

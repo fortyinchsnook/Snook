@@ -1,3 +1,5 @@
+import mascotCalm from '../assets/mascot-calm.png'
+
 function starPoints(cx, cy, rOuter, rInner, spikes) {
   let pts = ''
   const step = Math.PI / spikes
@@ -18,23 +20,6 @@ function tinyStar(cx, cy, r) {
     d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' '
   }
   return d + 'Z'
-}
-function snookIcon(cx, cy, scale) {
-  return `
-  <g transform="translate(${cx},${cy}) scale(${scale})">
-    <path d="M -40,2 L -34,-3 C -30,-9 -23,-12 -13,-13 C -3,-14 6,-13 14,-11 C 20,-9.5 25,-8 29,-6.5 L 29,6.5 C 25,8 20,9.5 14,11 C 6,13 -3,14 -13,13 C -23,12 -30,9 -34,3 L -40,2 Z"
-          fill="none" stroke="#FFC93C" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M -11,-13 L -9,-22 L -6,-14 L -3,-23 L 0,-14 L 3,-22 L 6,-13" fill="none" stroke="#FFC93C" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-    <path d="M 15,-11 L 19,-17 L 22,-10 Z" fill="#FFC93C" opacity="0.9"/>
-    <path d="M 13,11 L 17,17 L 20,10 Z" fill="#FFC93C" opacity="0.9"/>
-    <path d="M -14,5 C -18,10 -20,14 -19,18 C -14,15 -10,11 -8,7 Z" fill="#FFC93C" opacity="0.85"/>
-    <path d="M 29,-6.5 L 43,-16 L 35,-2.5 Z" fill="none" stroke="#FFC93C" stroke-width="2.4" stroke-linejoin="round"/>
-    <path d="M 29,6.5 L 43,16 L 35,2.5 Z" fill="none" stroke="#FFC93C" stroke-width="2.4" stroke-linejoin="round"/>
-    <line x1="-20" y1="0" x2="28" y2="0" stroke="#FFC93C" stroke-width="1.5"/>
-    <circle cx="-27" cy="-4" r="2.6" fill="none" stroke="#FFC93C" stroke-width="1.4"/>
-    <circle cx="-27" cy="-4" r="0.9" fill="#FFC93C"/>
-    <path d="M -21,-8 C -19,-3 -19,3 -21,8" fill="none" stroke="#FFC93C" stroke-width="1.2" opacity="0.8"/>
-  </g>`
 }
 function checkIcon(cx, cy) {
   return `<path d="M ${cx - 14},${cy} L ${cx - 6},${cy + 8} L ${cx + 16},${cy - 14}" fill="none" stroke="#FFC93C" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>`
@@ -66,7 +51,7 @@ export default function CertifiedSeal({ size = 40, uid = 'seal' }) {
     </g>
     <path d="${tinyStar(18, 60, 4)}" fill="#FFC93C"/><path d="${tinyStar(102, 60, 4)}" fill="#FFC93C"/>
     <text x="${cx}" y="34" text-anchor="middle" font-family="Baloo 2, sans-serif" font-weight="800" font-size="12" letter-spacing="1.2" fill="#FFC93C">CERTIFIED</text>
-    ${snookIcon(60, 57, 0.72)}
+    <image href="${mascotCalm}" x="39" y="43" width="42" height="28" preserveAspectRatio="xMidYMid meet"/>
     ${checkIcon(60, 85)}
     <text font-family="Baloo 2, sans-serif" font-weight="800" font-size="9.2" letter-spacing="0.5" fill="#FFC93C">
       <textPath href="#topArc${uid}" startOffset="50%" text-anchor="middle">CERTIFIED SNOOK</textPath>

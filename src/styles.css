@@ -40,15 +40,19 @@ a { color: var(--teal); }
 /* ---------- HEADER ---------- */
 header { background: var(--bg-2); padding: 20px 18px 0; position: relative; overflow: hidden; border-bottom: 3px solid var(--edge); }
 .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.brand { flex: 1; min-width: 0; }
 .brand h1 {
   font-family: 'Luckiest Guy', cursive; font-weight: 400; font-size: 30px; letter-spacing: 0.5px; margin: 0;
   color: var(--gold); -webkit-text-stroke: 2px #000; paint-order: stroke fill;
-  text-shadow: 0 0 18px rgba(255,201,60,0.35); line-height: 1.05;
+  text-shadow: 0 0 18px rgba(255,201,60,0.35); line-height: 0.92; text-align: left;
 }
-.brand .tagline { font-weight: 700; font-size: 12px; color: var(--teal); margin-top: 4px; }
+.brand .tagline { font-weight: 700; font-size: 11.5px; color: var(--teal); margin-top: 6px; line-height: 1.3; }
 .mascot-img { width: 68px; flex-shrink: 0; filter: drop-shadow(0 0 10px rgba(47,230,217,0.35)); animation: bob 2.6s ease-in-out infinite; object-fit: contain; }
 .mascot-img.mascot-lg { width: 130px; }
 .mascot-img.mascot-sm { width: 26px; filter: drop-shadow(0 0 6px rgba(255,90,54,0.3)); }
+.mascot-img.mascot-header { width: 96px; }
+.mascot-btn { background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0; }
+.mascot-btn:active .mascot-img { transform: scale(0.92); }
 @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
 
 .status-pill {
@@ -253,6 +257,36 @@ header { background: var(--bg-2); padding: 20px 18px 0; position: relative; over
   font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px;
 }
 
+/* ---------- ONBOARDING ---------- */
+.onboard-overlay {
+  position: fixed; inset: 0; background: rgba(6,10,15,0.9); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; z-index: 400;
+}
+.onboard-card {
+  position: relative; background: var(--panel); border: 3px solid var(--edge); border-radius: 26px;
+  padding: 40px 26px 28px; text-align: center; max-width: 340px; width: 88%;
+}
+.onboard-skip {
+  position: absolute; top: 14px; right: 16px; background: none; border: none; cursor: pointer;
+  color: var(--muted); font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 12px;
+  text-decoration: underline;
+}
+.onboard-mascot { display: flex; justify-content: center; margin-bottom: 10px; }
+.onboard-mascot .mascot-img { width: 110px; animation: bob 2.4s ease-in-out infinite; }
+.onboard-title {
+  font-family: 'Luckiest Guy', cursive; font-size: 21px; color: var(--gold); line-height: 1.15;
+  margin-bottom: 10px; text-shadow: 0 0 12px rgba(255,201,60,0.25);
+}
+.onboard-body { font-size: 13.5px; font-weight: 600; color: var(--silver); line-height: 1.5; margin-bottom: 22px; }
+.onboard-dots { display: flex; justify-content: center; gap: 7px; margin-bottom: 20px; }
+.onboard-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--edge); transition: background 0.2s ease, transform 0.2s ease; }
+.onboard-dot.active { background: var(--teal); transform: scale(1.3); }
+.onboard-next {
+  width: 100%; padding: 13px; border-radius: 14px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--teal), var(--teal-deep)); color: #06181A;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 15px;
+}
+
 /* ---------- EDUCATION ---------- */
 .edu-card { margin: 0 18px 14px; background: var(--panel); border: 2px solid var(--edge); border-radius: 16px; padding: 14px 16px; display: flex; gap: 12px; }
 .edu-card .num {
@@ -308,3 +342,92 @@ header { background: var(--bg-2); padding: 20px 18px 0; position: relative; over
 .auth-switch button { background: none; border: none; color: var(--teal); font-weight: 800; cursor: pointer; font-size: 12.5px; text-decoration: underline; }
 
 footer { text-align: center; margin-top: 26px; padding: 0 20px; font-weight: 700; font-size: 10px; color: var(--muted); }
+
+/* ---------- comment count tag ---------- */
+.meta-tag.comment-tag { color: var(--teal); border-color: var(--teal); background: rgba(47,230,217,0.1); }
+
+/* ---------- load more ---------- */
+.load-more-btn {
+  width: 100%; padding: 12px; margin-top: 4px; border-radius: 14px; border: 2px dashed var(--edge);
+  background: var(--panel); color: var(--teal); font-family: 'Baloo 2', sans-serif; font-weight: 800;
+  font-size: 13px; cursor: pointer;
+}
+.load-more-btn:hover { border-color: var(--teal); }
+
+/* ---------- catch detail overlay ---------- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(6,10,15,0.92); backdrop-filter: blur(2px);
+  z-index: 300; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center;
+}
+.detail-card { background: var(--bg-2); width: 100%; max-width: 780px; min-height: 100vh; }
+.detail-top {
+  display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 2px solid var(--edge);
+  position: sticky; top: 0; background: var(--bg-2); z-index: 5;
+}
+.detail-title { font-family: 'Luckiest Guy', cursive; font-size: 16px; color: var(--silver); }
+.detail-photo {
+  height: 240px; background: linear-gradient(160deg, #12262B, #060B0F);
+  display: flex; align-items: center; justify-content: center; font-size: 90px; overflow: hidden;
+}
+.detail-body { padding: 18px; }
+.detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.detail-angler { font-weight: 800; font-size: 18px; }
+.detail-sub { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+.detail-len { font-family: 'Luckiest Guy', cursive; font-size: 34px; text-align: right; white-space: nowrap; }
+.detail-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+.own-actions { display: flex; gap: 10px; margin-top: 16px; }
+.own-actions button {
+  flex: 1; padding: 10px; border-radius: 12px; font-family: 'Baloo 2', sans-serif; font-weight: 800;
+  font-size: 12.5px; cursor: pointer; border: 2px solid var(--red); background: var(--panel); color: var(--red);
+}
+
+/* ---------- comments ---------- */
+.comments-section { margin-top: 22px; }
+.comments-head { font-weight: 800; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.comment {
+  background: var(--panel); border: 1.5px solid var(--edge); border-radius: 14px; padding: 10px 12px;
+  margin-bottom: 8px; position: relative;
+}
+.comment .c-head { display: flex; justify-content: space-between; align-items: baseline; }
+.comment .c-handle { font-weight: 800; font-size: 12.5px; color: var(--teal); }
+.comment .c-time { font-size: 9.5px; color: var(--muted); font-weight: 600; }
+.comment .c-text { font-size: 13px; margin-top: 3px; line-height: 1.4; word-wrap: break-word; }
+.comment .c-del {
+  position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 11px; opacity: 0.6;
+}
+.comment .c-del:hover { color: var(--red); opacity: 1; }
+.no-comments { color: var(--muted); font-size: 12.5px; font-weight: 600; text-align: center; padding: 16px; }
+
+.composer { margin-top: 14px; }
+.composer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.char-count { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--muted); }
+.char-count.warn { color: var(--orange); }
+.post-comment-btn {
+  padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--teal), var(--teal-deep)); color: #06181A;
+  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 12.5px;
+}
+.post-comment-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ---------- confirm dialog ---------- */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(6,10,15,0.85); display: flex;
+  align-items: center; justify-content: center; z-index: 500; padding: 20px;
+}
+.confirm-card {
+  background: var(--panel); border: 3px solid var(--red); border-radius: 20px; padding: 24px 20px;
+  max-width: 300px; width: 100%; text-align: center;
+}
+.confirm-card .icon { font-size: 30px; margin-bottom: 8px; }
+.confirm-card h3 { font-family: 'Luckiest Guy', cursive; font-size: 18px; margin: 0 0 8px; color: var(--red); }
+.confirm-card p { font-size: 12.5px; color: var(--muted); font-weight: 600; margin: 0 0 18px; line-height: 1.4; }
+.confirm-buttons { display: flex; gap: 10px; }
+.confirm-buttons button {
+  flex: 1; padding: 11px; border-radius: 12px; font-family: 'Baloo 2', sans-serif; font-weight: 800;
+  font-size: 13px; cursor: pointer; border: none;
+}
+.confirm-buttons .cancel { background: var(--panel-2); color: var(--muted); }
+.confirm-buttons .confirm-del { background: var(--red); color: #fff; }
+

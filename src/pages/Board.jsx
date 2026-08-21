@@ -3,24 +3,38 @@ import { supabase } from '../supabaseClient'
 import { sizeTier } from '../lib/sizeTier'
 import CertifiedSeal from '../components/CertifiedSeal'
 import Mascot from '../components/Mascot'
+import ConfirmDialog from '../components/ConfirmDialog'
 
-function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged }) {
+const PAGE_SIZE = 10
+
+function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged, onOpen, isMine, onRequestDelete }) {
   const t = sizeTier(c.length)
   const agreeCount = votes.filter((v) => v.value === 'agree').length
   const disagreeCount = votes.filter((v) => v.value === 'disagree').length
   const total = agreeCount + disagreeCount
   const agreePct = total ? Math.round((agreeCount / total) * 100) : 0
+  const commentCount = c.comments?.[0]?.count || 0
 
   return (
-    <div className="lb-row">
-      <button
-        className="flag-btn"
-        title={flagged ? 'Reported — thanks' : 'Report this post'}
-        disabled={flagged}
-        onClick={() => onFlag(c.id)}
-      >
-        {flagged ? '✓' : '🚩'}
-      </button>
+    <div className="lb-row" onClick={() => onOpen(c.id)}>
+      {isMine ? (
+        <button
+          className="corner-btn delete-btn"
+          title="Delete this catch"
+          onClick={(e) => { e.stopPropagation(); onRequestDelete(c.id) }}
+        >
+          🗑️
+        </button>
+      ) : (
+        <button
+          className="flag-btn"
+          title={flagged ? 'Reported — thanks' : 'Report this post'}
+          disabled={flagged}
+          onClick={(e) => { e.stopPropagation(); onFlag(c.id) }}
+        >
+          {flagged ? '✓' : '🚩'}
+        </button>
+      )}
       <div className={`rank ${rank === 1 ? 'gold' : ''}`}>{rank}</div>
       <div className="thumb">
         {c.photo_url ? (
@@ -30,7 +44,7 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
         )}
       </div>
       <div className="meta">
-        <button className="angler-link" onClick={() => onSelectUser(c.user_id)}>
+        <button className="angler-link" onClick={(e) => { e.stopPropagation(); onSelectUser(c.user_id) }}>
           {c.profiles?.handle || 'angler'}
         </button>
         <div className="sub">📍 {c.county} · {new Date(c.created_at).toLocaleDateString()}</div>
@@ -44,6 +58,7 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
           )}
           {c.spot_type && <span className="meta-tag">{c.spot_type}</span>}
           {c.lure && <span className="meta-tag">🎣 {c.lure}</span>}
+          {commentCount > 0 && <span className="meta-tag comment-tag">💬 {commentCount}</span>}
         </div>
       </div>
       <div className="length-num">
@@ -61,13 +76,13 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
           <div className="mini-vote">
             <button
               className={myVote === 'agree' ? 'voted' : ''}
-              onClick={() => onVote(c.id, 'agree')}
+              onClick={(e) => { e.stopPropagation(); onVote(c.id, 'agree') }}
             >
               👍
             </button>
             <button
               className={myVote === 'disagree' ? 'voted' : ''}
-              onClick={() => onVote(c.id, 'disagree')}
+              onClick={(e) => { e.stopPropagation(); onVote(c.id, 'disagree') }}
             >
               👎
             </button>
@@ -78,18 +93,20 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
   )
 }
 
-export default function Board({ session, onSelectUser }) {
+export default function Board({ session, onSelectUser, onOpenCatch, refreshKey }) {
   const [view, setView] = useState('certified')
   const [catches, setCatches] = useState([])
   const [votesByCatch, setVotesByCatch] = useState({})
   const [flaggedIds, setFlaggedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   async function loadData() {
     setLoading(true)
     const { data: catchData } = await supabase
       .from('catches')
-      .select('*, profiles(handle)')
+      .select('*, profiles(handle), comments(count)')
       .order('length', { ascending: false })
 
     const { data: voteData } = await supabase.from('votes').select('*')
@@ -107,17 +124,19 @@ export default function Board({ session, onSelectUser }) {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [refreshKey])
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE) // reset pagination whenever the tab changes
+  }, [view])
 
   async function handleVote(catchId, value) {
     const userId = session.user.id
     const existing = (votesByCatch[catchId] || []).find((v) => v.user_id === userId)
 
     if (existing && existing.value === value) {
-      // tapping the same thumb again retracts the vote
       await supabase.from('votes').delete().eq('id', existing.id)
     } else if (existing) {
-      // switching thumbs — update, don't insert a second row
       await supabase.from('votes').update({ value }).eq('id', existing.id)
     } else {
       await supabase.from('votes').insert({ catch_id: catchId, user_id: userId, value })
@@ -127,19 +146,23 @@ export default function Board({ session, onSelectUser }) {
 
   async function handleFlag(catchId) {
     if (flaggedIds.has(catchId)) return
-    // optimistic — mark it flagged locally right away so the button
-    // disables instantly, regardless of what the server says
     setFlaggedIds((prev) => new Set(prev).add(catchId))
     await supabase.from('flags').insert({ catch_id: catchId, reporter_id: session.user.id })
-    // the insert firing a database webhook → edge function → email
-    // happens entirely server-side; nothing else to do here
+  }
+
+  async function handleConfirmDelete() {
+    await supabase.from('catches').delete().eq('id', confirmDeleteId)
+    setConfirmDeleteId(null)
+    loadData()
   }
 
   const certified = catches.filter((c) => c.verification === 'certified')
   const liars = catches.filter((c) => c.verification === 'liar')
-  const combined = [...catches].slice(0, 8)
+  const combined = [...catches]
 
-  const list = view === 'certified' ? certified : view === 'allegedly' ? liars : combined
+  const fullList = view === 'certified' ? certified : view === 'allegedly' ? liars : combined
+  const list = fullList.slice(0, visibleCount)
+  const hasMore = fullList.length > visibleCount
 
   return (
     <section className="page active">
@@ -179,10 +202,27 @@ export default function Board({ session, onSelectUser }) {
               onSelectUser={onSelectUser}
               onFlag={handleFlag}
               flagged={flaggedIds.has(c.id)}
+              onOpen={onOpenCatch}
+              isMine={c.user_id === session.user.id}
+              onRequestDelete={setConfirmDeleteId}
               showAgree
             />
           ))}
+        {!loading && hasMore && (
+          <button className="load-more-btn" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
+            Load More
+          </button>
+        )}
       </div>
+
+      {confirmDeleteId && (
+        <ConfirmDialog
+          title="Delete this catch?"
+          message="This removes it from every leaderboard along with its votes and comments. This can't be undone."
+          onCancel={() => setConfirmDeleteId(null)}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
     </section>
   )
 }

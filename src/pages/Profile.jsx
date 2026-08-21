@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { sizeTier, FL_COUNTIES, TX_COUNTIES } from '../lib/sizeTier'
 
-export default function Profile({ session, viewUserId, onBack }) {
+export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
   const targetUserId = viewUserId || session.user.id
   const isOwnProfile = targetUserId === session.user.id
 
@@ -11,6 +11,7 @@ export default function Profile({ session, viewUserId, onBack }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ handle: '', county: '', ig_url: '', fb_url: '', yt_url: '', tiktok_url: '' })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   async function loadProfile() {
     setProfile(null)
@@ -46,8 +47,18 @@ export default function Profile({ session, viewUserId, onBack }) {
 
   async function handleSave() {
     setSaving(true)
-    await supabase.from('profiles').update(form).eq('id', session.user.id)
+    setSaveError('')
+    const { error } = await supabase.from('profiles').update(form).eq('id', session.user.id)
     setSaving(false)
+    if (error) {
+      // Postgres unique_violation code — almost certainly the handle is taken
+      if (error.code === '23505') {
+        setSaveError('That handle is already taken — try another.')
+      } else {
+        setSaveError(error.message)
+      }
+      return // stay in edit mode, don't lose what they typed
+    }
     setEditing(false)
     loadProfile()
   }
@@ -84,7 +95,7 @@ export default function Profile({ session, viewUserId, onBack }) {
               {profile.tiktok_url && <a href={profile.tiktok_url} target="_blank" rel="noopener noreferrer" title="TikTok">🎵</a>}
             </div>
             {isOwnProfile && (
-              <button className="submit-btn" style={{ marginTop: 16 }} onClick={() => setEditing(true)}>
+              <button className="submit-btn" style={{ marginTop: 16 }} onClick={() => { setSaveError(''); setEditing(true) }}>
                 Edit Profile
               </button>
             )}
@@ -123,9 +134,10 @@ export default function Profile({ session, viewUserId, onBack }) {
               <label>TikTok URL</label>
               <input value={form.tiktok_url} onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })} placeholder="https://tiktok.com/@you" />
             </div>
+            {saveError && <div className="err-msg" style={{ display: 'block' }}>{saveError}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="submit-btn" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-              <button className="submit-btn" style={{ background: 'var(--panel-2)', color: 'var(--muted)' }} onClick={() => setEditing(false)}>Cancel</button>
+              <button className="submit-btn" style={{ background: 'var(--panel-2)', color: 'var(--muted)' }} onClick={() => { setSaveError(''); setEditing(false) }}>Cancel</button>
             </div>
           </>
         )}
@@ -147,7 +159,7 @@ export default function Profile({ session, viewUserId, onBack }) {
         {myCatches.map((c) => {
           const t = sizeTier(c.length)
           return (
-            <div className="catalog-item" key={c.id}>
+            <div className="catalog-item" key={c.id} onClick={() => onOpenCatch?.(c.id)} style={{ cursor: 'pointer' }}>
               <div className="cthumb">
                 {c.photo_url ? (
                   <img src={c.photo_url} alt="catch" />

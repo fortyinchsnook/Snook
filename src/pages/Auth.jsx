@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 import Mascot from '../components/Mascot'
 
 export default function Auth() {
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
+  const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -20,6 +20,12 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
         setInfo('Check your email to confirm your account, then sign in.')
+      } else if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+        })
+        if (error) throw error
+        setInfo("Check your email for a reset link. It'll bring you back here to set a new password.")
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
@@ -56,41 +62,63 @@ export default function Auth() {
               required
             />
           </div>
-          <div className="field">
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div className="field">
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+          )}
+          {mode === 'signin' && (
+            <button
+              type="button"
+              onClick={() => { setMode('forgot'); setError(''); setInfo('') }}
+              style={{
+                background: 'none', border: 'none', color: 'var(--teal)', fontWeight: 700,
+                fontSize: 12, cursor: 'pointer', textDecoration: 'underline', marginBottom: 14, display: 'block',
+              }}
+            >
+              Forgot password?
+            </button>
+          )}
           {error && <div className="err-msg" style={{ display: 'block' }}>{error}</div>}
           {info && <div className="hint" style={{ color: 'var(--green)' }}>{info}</div>}
           <button className="submit-btn" type="submit" disabled={loading}>
-            {mode === 'signup' ? 'Create Account' : 'Sign In'}
+            {loading ? 'Please wait…' : mode === 'signup' ? 'Create Account' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
           </button>
         </form>
 
-        <div className="auth-divider">or</div>
+        {mode !== 'forgot' && (
+          <>
+            <div className="auth-divider">or</div>
 
-        <button className="oauth-btn google" onClick={() => handleOAuth('google')}>
-          <span>🇬</span> Continue with Google
-        </button>
-        <button className="oauth-btn apple" onClick={() => handleOAuth('apple')}>
-          <span></span> Continue with Apple
-        </button>
-        <div className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
-          Apple sign-in only works once Sign in with Apple is configured in
-          your Supabase + Apple Developer account — see the README.
-        </div>
+            <button className="oauth-btn google" onClick={() => handleOAuth('google')}>
+              <span>🇬</span> Continue with Google
+            </button>
+            <button className="oauth-btn apple" onClick={() => handleOAuth('apple')}>
+              <span></span> Continue with Apple
+            </button>
+            <div className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
+              Apple sign-in only works once Sign in with Apple is configured in
+              your Supabase + Apple Developer account — see the README.
+            </div>
+          </>
+        )}
 
         <div className="auth-switch">
-          {mode === 'signin' ? (
+          {mode === 'signin' && (
             <>New here? <button onClick={() => setMode('signup')}>Create an account</button></>
-          ) : (
+          )}
+          {mode === 'signup' && (
             <>Already have an account? <button onClick={() => setMode('signin')}>Sign in</button></>
+          )}
+          {mode === 'forgot' && (
+            <>Remembered it? <button onClick={() => setMode('signin')}>Back to sign in</button></>
           )}
         </div>
       </div>
