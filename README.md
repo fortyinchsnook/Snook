@@ -138,6 +138,61 @@ If all of that works, you have a real, working app.
 
 ## Changelog
 
+- **Vote verdict badges on Liars catches** — instead of just a raw
+  percentage, a Liar's catch with at least 5 total votes now shows a
+  color-coded verdict: ✅ Community Verified (80%+), 🤔 Mostly Believed
+  (60-79%), 😐 Split Decision (40-59%), 🤨 Skeptical Crowd (20-39%), or
+  🤥 Nobody's Buying It (under 20%). Under 5 votes, it shows the raw % plus
+  "verdict at 5 votes" so people know more votes are needed. No database
+  change needed — this is purely computed client-side from votes you
+  already have.
+- **Board shows a real error if it fails to load** — instead of silently
+  looking like there are zero catches, a failed leaderboard fetch now
+  shows an actual error message with a "Try Again" button.
+- **"Contact Us" link** — next to Terms & Privacy at the bottom of every
+  page, opens an email to fortyinchsnook@gmail.com for issues, complaints,
+  or suggestions.
+
+**Note:** this update is layered on top of the previous batch (guest
+browsing, account deletion, tier badges, share-to-image, photo-library
+fix) — if you haven't installed that one yet, this zip has everything
+from both, all in one. Same setup steps as before apply (the
+`delete-account` Edge Function still needs deploying) — nothing new to
+run for this specific batch.
+
+- **Guest browsing** — anyone can view the Board and Education pages
+  without an account now. Everything stays view-only for guests: tapping
+  vote, comment, flag, Log Catch, or the Profile tab shows a tailored
+  "sign up to do this" prompt instead of a dead end, with a "Continue
+  Browsing" way back out if they're not ready yet.
+- **Account deletion** — a "Delete my account" link at the bottom of your
+  own profile permanently removes your account, profile, catches, votes,
+  and comments. Needs the new `delete-account` Edge Function deployed —
+  see below.
+- **Tier badges** — a "🎖️ Tier Badges" section on every profile shows all 8
+  size tiers using the new gold seal artwork; unlocked ones (earned from at
+  least one **Certified** catch in that range) show full color with a
+  tier-colored ring, locked ones show grayed out with a 🔒. Liars catches
+  don't count toward badges, on purpose.
+- **Share to social** — a 📤 button in the catch detail view builds a
+  shareable image (photo, length, tier, handle, a small
+  "40inchsnook.com" watermark) and opens the device's native share sheet.
+  Falls back to a plain image download on browsers that don't support
+  sharing files (mostly desktop).
+- **Photo upload no longer forces the camera** — removed the setting that
+  was skipping straight to the camera on some phones; picking from your
+  photo library should work now too.
+
+### One more setup step for this update
+
+Deploy the new Edge Function the same way as the flag-email one:
+```bash
+supabase functions deploy delete-account
+```
+No new secrets needed for this one — Supabase provides the required keys
+automatically for every Edge Function. (Needs Docker Desktop open, same
+requirement as before.)
+
 - **Certified seal now uses the real snook artwork** — the hand-drawn
   line-art fish in the middle of the gold badge is replaced with the calm
   mascot image (the same one in the header). Shows up everywhere the seal

@@ -11,6 +11,7 @@ import BottomNav from './components/BottomNav'
 import Mascot from './components/Mascot'
 import OnboardingModal from './components/OnboardingModal'
 import CatchDetail from './components/CatchDetail'
+import SignInPrompt from './components/SignInPrompt'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -22,6 +23,8 @@ export default function App() {
   const [showLegal, setShowLegal] = useState(false)
   const [boardRefreshKey, setBoardRefreshKey] = useState(0)
   const [passwordRecovery, setPasswordRecovery] = useState(false)
+  const [forceAuth, setForceAuth] = useState(false)
+  const [signInPromptMsg, setSignInPromptMsg] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,6 +36,9 @@ export default function App() {
       setSession(session)
       if (event === 'PASSWORD_RECOVERY') {
         setPasswordRecovery(true)
+      }
+      if (session) {
+        setForceAuth(false) // signed in successfully — drop out of the auth screen
       }
     })
 
@@ -61,11 +67,12 @@ export default function App() {
   }
 
   function playMascotPop() {
-    // synthesized-free — expects a real recording dropped at public/sounds/mascot-pop.mp3.
-    // .catch() swallows the error silently if the file isn't there yet, so this
-    // never breaks the app even before the sound is added.
     const audio = new Audio('/sounds/mascot-pop.mp3')
     audio.play().catch(() => {})
+  }
+
+  function requireAuth(message) {
+    setSignInPromptMsg(message)
   }
 
   if (loadingSession) {
@@ -76,11 +83,21 @@ export default function App() {
     return <ResetPassword onDone={() => setPasswordRecovery(false)} />
   }
 
-  if (!session) {
-    return <Auth />
+  if (forceAuth) {
+    return <Auth onCancel={() => setForceAuth(false)} />
   }
 
+  const isGuest = !session
+
   function handleNavChange(newPage) {
+    if (isGuest && (newPage === 'log' || newPage === 'profile')) {
+      requireAuth(
+        newPage === 'log'
+          ? 'Got a snook of your own? Sign up free and get it on the board.'
+          : 'Sign up free to build your profile and track your catches.'
+      )
+      return
+    }
     if (newPage === 'profile') setViewedUserId(null)
     setShowLegal(false)
     setPage(newPage)
@@ -96,21 +113,33 @@ export default function App() {
     setBoardRefreshKey((k) => k + 1)
   }
 
+  const headerJsx = (
+    <header>
+      <div className="brand-row">
+        <div className="brand">
+          <h1>40" SNOOK<br />CLUB</h1>
+          <div className="tagline">🎣 CERTIFIED · LIARS · PROVE IT ON THE WATER</div>
+        </div>
+        <button className="mascot-btn" onClick={playMascotPop} aria-label="snook noise">
+          <Mascot className="mascot-header" />
+        </button>
+      </div>
+      <div className="wave"></div>
+    </header>
+  )
+
+  const signInPromptJsx = signInPromptMsg && (
+    <SignInPrompt
+      message={signInPromptMsg}
+      onClose={() => setSignInPromptMsg(null)}
+      onSignIn={() => { setSignInPromptMsg(null); setForceAuth(true) }}
+    />
+  )
+
   if (showLegal) {
     return (
       <div className="wrap">
-        <header>
-          <div className="brand-row">
-            <div className="brand">
-              <h1>40" SNOOK<br />CLUB</h1>
-              <div className="tagline">🎣 CERTIFIED · LIARS · PROVE IT ON THE WATER</div>
-            </div>
-            <button className="mascot-btn" onClick={playMascotPop} aria-label="snook noise">
-              <Mascot className="mascot-header" />
-            </button>
-          </div>
-          <div className="wave"></div>
-        </header>
+        {headerJsx}
         <Legal onBack={() => setShowLegal(false)} />
         <BottomNav active={page} onChange={handleNavChange} />
       </div>
@@ -120,27 +149,18 @@ export default function App() {
   return (
     <div className="wrap">
       {showOnboarding && <OnboardingModal onDismiss={handleOnboardingDismiss} />}
+      {signInPromptJsx}
       {selectedCatchId && (
         <CatchDetail
           catchId={selectedCatchId}
           session={session}
           onClose={() => setSelectedCatchId(null)}
           onChanged={handleDataChanged}
+          onRequireAuth={requireAuth}
         />
       )}
 
-      <header>
-        <div className="brand-row">
-          <div className="brand">
-            <h1>40" SNOOK<br />CLUB</h1>
-            <div className="tagline">🎣 CERTIFIED · LIARS · PROVE IT ON THE WATER</div>
-          </div>
-          <button className="mascot-btn" onClick={playMascotPop} aria-label="snook noise">
-            <Mascot className="mascot-header" />
-          </button>
-        </div>
-        <div className="wave"></div>
-      </header>
+      {headerJsx}
 
       {page === 'board' && (
         <Board
@@ -148,11 +168,12 @@ export default function App() {
           onSelectUser={handleSelectUser}
           onOpenCatch={setSelectedCatchId}
           refreshKey={boardRefreshKey}
+          onRequireAuth={requireAuth}
         />
       )}
-      {page === 'log' && <LogCatch session={session} />}
+      {page === 'log' && session && <LogCatch session={session} />}
       {page === 'edu' && <Education />}
-      {page === 'profile' && (
+      {page === 'profile' && (session || viewedUserId) && (
         <Profile
           session={session}
           viewUserId={viewedUserId}
@@ -171,17 +192,38 @@ export default function App() {
         >
           Terms &amp; Privacy
         </button>
-      </div>
-      <div style={{ textAlign: 'center', padding: '0 18px 10px' }}>
-        <button
-          onClick={() => supabase.auth.signOut()}
+        <span style={{ color: 'var(--edge)', margin: '0 8px', fontSize: 11 }}>·</span>
+        <a
+          href="mailto:fortyinchsnook@gmail.com?subject=40%22%20Snook%20Club%20Feedback"
           style={{
-            background: 'none', border: 'none', color: 'var(--muted)',
-            fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline',
+            color: 'var(--muted)', fontSize: 11, fontWeight: 700, textDecoration: 'underline',
           }}
         >
-          Sign out
-        </button>
+          Contact Us
+        </a>
+      </div>
+      <div style={{ textAlign: 'center', padding: '0 18px 10px' }}>
+        {session ? (
+          <button
+            onClick={() => supabase.auth.signOut()}
+            style={{
+              background: 'none', border: 'none', color: 'var(--muted)',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            Sign out
+          </button>
+        ) : (
+          <button
+            onClick={() => setForceAuth(true)}
+            style={{
+              background: 'none', border: 'none', color: 'var(--teal)',
+              fontSize: 12, fontWeight: 800, cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            Sign Up / Sign In
+          </button>
+        )}
       </div>
 
       <BottomNav active={page} onChange={handleNavChange} />

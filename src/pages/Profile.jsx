@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { sizeTier, FL_COUNTIES, TX_COUNTIES } from '../lib/sizeTier'
+import { sizeTier, TIERS, FL_COUNTIES, TX_COUNTIES } from '../lib/sizeTier'
+import TierBadge from '../components/TierBadge'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
-  const targetUserId = viewUserId || session.user.id
-  const isOwnProfile = targetUserId === session.user.id
+  const targetUserId = viewUserId || session?.user?.id
+  const isOwnProfile = !!session && targetUserId === session.user.id
 
   const [profile, setProfile] = useState(null)
   const [myCatches, setMyCatches] = useState([])
@@ -12,8 +14,12 @@ export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
   const [form, setForm] = useState({ handle: '', county: '', ig_url: '', fb_url: '', yt_url: '', tiktok_url: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   async function loadProfile() {
+    if (!targetUserId) return
     setProfile(null)
     const { data: p } = await supabase
       .from('profiles')
@@ -51,16 +57,29 @@ export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
     const { error } = await supabase.from('profiles').update(form).eq('id', session.user.id)
     setSaving(false)
     if (error) {
-      // Postgres unique_violation code — almost certainly the handle is taken
       if (error.code === '23505') {
         setSaveError('That handle is already taken — try another.')
       } else {
         setSaveError(error.message)
       }
-      return // stay in edit mode, don't lose what they typed
+      return
     }
     setEditing(false)
     loadProfile()
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true)
+    setDeleteError('')
+    try {
+      const { error } = await supabase.functions.invoke('delete-account')
+      if (error) throw error
+      await supabase.auth.signOut()
+    } catch (err) {
+      setDeleteError(err.message || 'Something went wrong deleting your account. Try again, or email us.')
+      setDeletingAccount(false)
+      setConfirmDeleteAccount(false)
+    }
   }
 
   if (!profile) return <section className="page active"><div className="page-sub">Loading profile…</div></section>
@@ -68,6 +87,15 @@ export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
   const totalLength = myCatches.reduce((sum, c) => sum + parseFloat(c.length), 0)
   const counties = new Set(myCatches.map((c) => c.county))
   const personalBest = myCatches.reduce((max, c) => Math.max(max, parseFloat(c.length)), 0)
+
+  // a tier badge unlocks if there's at least one CERTIFIED catch whose
+  // length falls in that specific tier's range
+  const certifiedCatches = myCatches.filter((c) => c.verification === 'certified')
+  const unlockedTierKeys = new Set(
+    certifiedCatches
+      .map((c) => TIERS.find((t) => parseFloat(c.length) >= t.min && parseFloat(c.length) < t.max)?.key)
+      .filter(Boolean)
+  )
 
   return (
     <section className="page active">
@@ -153,6 +181,13 @@ export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
         <div className="stat-card"><div className="val">—</div><div className="lbl">Days skunked (coming soon)</div></div>
       </div>
 
+      <div className="section-label" style={{ paddingTop: 0 }}>🎖️ Tier Badges <small>&nbsp;— earned from Certified catches only</small></div>
+      <div className="badge-grid">
+        {TIERS.map((t) => (
+          <TierBadge key={t.key} tier={t} unlocked={unlockedTierKeys.has(t.key)} size={80} />
+        ))}
+      </div>
+
       <div className="section-label" style={{ paddingTop: 0 }}>🗂️ Catch Catalog</div>
       <div className="catalog-grid">
         {myCatches.length === 0 && <div className="empty-state">No catches logged yet.</div>}
@@ -173,6 +208,31 @@ export default function Profile({ session, viewUserId, onBack, onOpenCatch }) {
           )
         })}
       </div>
+
+      {isOwnProfile && (
+        <div style={{ padding: '10px 18px 30px', textAlign: 'center' }}>
+          <button
+            onClick={() => setConfirmDeleteAccount(true)}
+            style={{
+              background: 'none', border: 'none', color: 'var(--red)', fontSize: 11,
+              fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', opacity: 0.7,
+            }}
+          >
+            Delete my account
+          </button>
+          {deleteError && <div className="err-msg" style={{ display: 'block', marginTop: 8 }}>{deleteError}</div>}
+        </div>
+      )}
+
+      {confirmDeleteAccount && (
+        <ConfirmDialog
+          title="Delete your account?"
+          message="This permanently deletes your account, profile, catches, comments, and votes. This cannot be undone."
+          confirmLabel={deletingAccount ? 'Deleting…' : 'Delete Account'}
+          onCancel={() => setConfirmDeleteAccount(false)}
+          onConfirm={handleDeleteAccount}
+        />
+      )}
     </section>
   )
 }

@@ -1,19 +1,32 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { sizeTier } from '../lib/sizeTier'
+import { voteVerdict, VOTES_UNTIL_VERDICT } from '../lib/voteVerdict'
 import CertifiedSeal from '../components/CertifiedSeal'
 import Mascot from '../components/Mascot'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 const PAGE_SIZE = 10
 
-function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged, onOpen, isMine, onRequestDelete }) {
+function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged, onOpen, isMine, onRequestDelete, isGuest, onRequireAuth }) {
   const t = sizeTier(c.length)
   const agreeCount = votes.filter((v) => v.value === 'agree').length
   const disagreeCount = votes.filter((v) => v.value === 'disagree').length
   const total = agreeCount + disagreeCount
   const agreePct = total ? Math.round((agreeCount / total) * 100) : 0
   const commentCount = c.comments?.[0]?.count || 0
+  const verdict = voteVerdict(agreeCount, disagreeCount)
+
+  function guarded(action, msg) {
+    return (e) => {
+      e.stopPropagation()
+      if (isGuest) {
+        onRequireAuth(msg)
+        return
+      }
+      action(e)
+    }
+  }
 
   return (
     <div className="lb-row" onClick={() => onOpen(c.id)}>
@@ -30,7 +43,7 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
           className="flag-btn"
           title={flagged ? 'Reported — thanks' : 'Report this post'}
           disabled={flagged}
-          onClick={(e) => { e.stopPropagation(); onFlag(c.id) }}
+          onClick={guarded(() => onFlag(c.id), 'Sign in to report this post.')}
         >
           {flagged ? '✓' : '🚩'}
         </button>
@@ -67,7 +80,16 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
         </div>
         {c.verification === 'liar' && showAgree ? (
           <div className="agree-ratio">
-            {total ? `${agreePct}% agree` : 'no votes yet'}
+            {verdict ? (
+              <>
+                <span className={`verdict-badge ${verdict.cls}`}>{verdict.label}</span>
+                <div className="verdict-pct">{verdict.pct}% agree</div>
+              </>
+            ) : total > 0 ? (
+              `${agreePct}% agree · verdict at ${VOTES_UNTIL_VERDICT} votes`
+            ) : (
+              'no votes yet'
+            )}
           </div>
         ) : (
           t && <div className="tier-label">{t.label}</div>
@@ -76,13 +98,13 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
           <div className="mini-vote">
             <button
               className={myVote === 'agree' ? 'voted' : ''}
-              onClick={(e) => { e.stopPropagation(); onVote(c.id, 'agree') }}
+              onClick={guarded(() => onVote(c.id, 'agree'), "Think that's really that big? 🤔 Sign up free and cast your vote.")}
             >
               👍
             </button>
             <button
               className={myVote === 'disagree' ? 'voted' : ''}
-              onClick={(e) => { e.stopPropagation(); onVote(c.id, 'disagree') }}
+              onClick={guarded(() => onVote(c.id, 'disagree'), "Think that's really that big? 🤔 Sign up free and cast your vote.")}
             >
               👎
             </button>
@@ -93,23 +115,37 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
   )
 }
 
-export default function Board({ session, onSelectUser, onOpenCatch, refreshKey }) {
+export default function Board({ session, onSelectUser, onOpenCatch, refreshKey, onRequireAuth }) {
+  const isGuest = !session
   const [view, setView] = useState('certified')
   const [catches, setCatches] = useState([])
   const [votesByCatch, setVotesByCatch] = useState({})
   const [flaggedIds, setFlaggedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   async function loadData() {
     setLoading(true)
-    const { data: catchData } = await supabase
+    setLoadError('')
+    const { data: catchData, error: catchError } = await supabase
       .from('catches')
       .select('*, profiles(handle), comments(count)')
       .order('length', { ascending: false })
 
-    const { data: voteData } = await supabase.from('votes').select('*')
+    if (catchError) {
+      setLoadError("Couldn't load the leaderboard — check your connection and try again.")
+      setLoading(false)
+      return
+    }
+
+    const { data: voteData, error: voteError } = await supabase.from('votes').select('*')
+    if (voteError) {
+      setLoadError("Couldn't load votes — try refreshing.")
+      setLoading(false)
+      return
+    }
 
     const grouped = {}
     ;(voteData || []).forEach((v) => {
@@ -127,7 +163,7 @@ export default function Board({ session, onSelectUser, onOpenCatch, refreshKey }
   }, [refreshKey])
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE) // reset pagination whenever the tab changes
+    setVisibleCount(PAGE_SIZE)
   }, [view])
 
   async function handleVote(catchId, value) {
@@ -187,28 +223,37 @@ export default function Board({ session, onSelectUser, onOpenCatch, refreshKey }
 
       <div className="board">
         {loading && <div className="empty-state">Loading catches…</div>}
-        {!loading && list.length === 0 && (
+        {!loading && loadError && (
+          <div className="empty-state error">
+            {loadError}
+            <button className="load-more-btn" style={{ marginTop: 10 }} onClick={loadData}>Try Again</button>
+          </div>
+        )}
+        {!loading && !loadError && list.length === 0 && (
           <div className="empty-state">Nothing logged yet — be the first to post a catch!</div>
         )}
         {!loading &&
+          !loadError &&
           list.map((c, i) => (
             <CatchRow
               key={c.id}
               c={c}
               rank={i + 1}
               votes={votesByCatch[c.id] || []}
-              myVote={(votesByCatch[c.id] || []).find((v) => v.user_id === session.user.id)?.value}
+              myVote={session ? (votesByCatch[c.id] || []).find((v) => v.user_id === session.user.id)?.value : undefined}
               onVote={handleVote}
               onSelectUser={onSelectUser}
               onFlag={handleFlag}
               flagged={flaggedIds.has(c.id)}
               onOpen={onOpenCatch}
-              isMine={c.user_id === session.user.id}
+              isMine={session ? c.user_id === session.user.id : false}
               onRequestDelete={setConfirmDeleteId}
+              isGuest={isGuest}
+              onRequireAuth={onRequireAuth}
               showAgree
             />
           ))}
-        {!loading && hasMore && (
+        {!loading && !loadError && hasMore && (
           <button className="load-more-btn" onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}>
             Load More
           </button>

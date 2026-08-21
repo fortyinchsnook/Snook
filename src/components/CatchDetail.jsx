@@ -3,8 +3,9 @@ import { supabase } from '../supabaseClient'
 import { sizeTier } from '../lib/sizeTier'
 import CertifiedSeal from '../components/CertifiedSeal'
 import ConfirmDialog from './ConfirmDialog'
+import { shareCatch } from '../lib/shareImage'
 
-export default function CatchDetail({ catchId, session, onClose, onChanged }) {
+export default function CatchDetail({ catchId, session, onClose, onChanged, onRequireAuth }) {
   const [c, setC] = useState(null)
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -12,6 +13,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
   const [posting, setPosting] = useState(false)
   const [confirmDeleteCatch, setConfirmDeleteCatch] = useState(false)
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null)
+  const [sharing, setSharing] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -34,6 +36,14 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
   useEffect(() => {
     load()
   }, [catchId])
+
+  function requireAuthOr(action, msg) {
+    if (!session) {
+      onRequireAuth(msg)
+      return
+    }
+    action()
+  }
 
   async function handlePostComment() {
     const text = commentText.trim()
@@ -66,6 +76,25 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
     onClose()
   }
 
+  async function handleShare() {
+    if (!c) return
+    setSharing(true)
+    try {
+      await shareCatch({
+        photoUrl: c.photo_url,
+        handle: c.profiles?.handle,
+        length: c.length,
+        tierLabel: sizeTier(c.length)?.label,
+        verification: c.verification,
+      })
+    } catch (err) {
+      // user cancelling the native share sheet also lands here — not an error worth surfacing
+      if (err?.name !== 'AbortError') console.error(err)
+    } finally {
+      setSharing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="overlay show">
@@ -87,7 +116,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
   }
 
   const t = sizeTier(c.length)
-  const isMine = c.user_id === session.user.id
+  const isMine = session && c.user_id === session.user.id
   const charsLeft = 120 - commentText.length
 
   return (
@@ -97,6 +126,9 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
           <div className="detail-top">
             <button className="back-btn" onClick={onClose}>← Back</button>
             <div className="detail-title">Catch Details</div>
+            <button className="share-btn" onClick={handleShare} disabled={sharing} title="Share">
+              {sharing ? '…' : '📤'}
+            </button>
           </div>
 
           <div className="detail-photo">
@@ -146,7 +178,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
               )}
               {comments.map((cm) => (
                 <div className="comment" key={cm.id}>
-                  {cm.user_id === session.user.id && (
+                  {session && cm.user_id === session.user.id && (
                     <button className="c-del" onClick={() => setConfirmDeleteComment(cm.id)}>✕</button>
                   )}
                   <div className="c-head">
@@ -159,14 +191,19 @@ export default function CatchDetail({ catchId, session, onClose, onChanged }) {
 
               <div className="composer">
                 <textarea
-                  placeholder="Say something about this catch..."
+                  placeholder={session ? 'Say something about this catch...' : 'Sign in to leave a comment...'}
                   maxLength={120}
                   value={commentText}
+                  onFocus={() => { if (!session) onRequireAuth('Got something to say about this one? Create a free account and speak up.') }}
                   onChange={(e) => setCommentText(e.target.value)}
                 />
                 <div className="composer-row">
                   <span className={`char-count ${charsLeft <= 20 ? 'warn' : ''}`}>{commentText.length} / 120</span>
-                  <button className="post-comment-btn" disabled={!commentText.trim() || posting} onClick={handlePostComment}>
+                  <button
+                    className="post-comment-btn"
+                    disabled={!commentText.trim() || posting}
+                    onClick={() => requireAuthOr(handlePostComment, 'Got something to say about this one? Create a free account and speak up.')}
+                  >
                     {posting ? 'Posting…' : 'Post'}
                   </button>
                 </div>

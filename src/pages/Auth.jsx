@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import Mascot from '../components/Mascot'
 
-export default function Auth() {
+export default function Auth({ onCancel }) {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,6 +46,17 @@ export default function Auth() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            style={{
+              background: 'none', border: 'none', color: 'var(--muted)', fontSize: 12,
+              fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', marginBottom: 14,
+            }}
+          >
+            ‹ Continue Browsing
+          </button>
+        )}
         <div className="brand" style={{ textAlign: 'center', marginBottom: 18 }}>
           <Mascot variant="calm" className="mascot-lg" />
           <h1>40" SNOOK<br />CLUB</h1>

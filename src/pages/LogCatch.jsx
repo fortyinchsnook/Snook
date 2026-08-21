@@ -123,7 +123,7 @@ export default function LogCatch({ session }) {
                 <span className="sub">Tap to open your camera or photo library</span>
               </>
             )}
-            <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} />
+            <input type="file" accept="image/*" onChange={handlePhotoChange} />
           </div>
         </div>
 

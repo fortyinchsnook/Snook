@@ -1,15 +1,20 @@
 // The value ladder — every catch gets colored & labeled by this.
+export const TIERS = [
+  { key: 'good-job',       label: 'GOOD JOB',       min: 22, max: 25, cls: 'tier-neutral' },
+  { key: 'solid',          label: 'SOLID',          min: 25, max: 28, cls: 'tier-green' },
+  { key: 'got-em',         label: 'GOT EM!',        min: 28, max: 34, cls: 'tier-green' },
+  { key: 'lunker',         label: 'LUNKER',         min: 34, max: 38, cls: 'tier-blue' },
+  { key: 'big-momma',      label: 'BIG MOMMA',      min: 38, max: 40, cls: 'tier-blue' },
+  { key: 'certified-slob', label: 'CERTIFIED SLOB', min: 40, max: 43, cls: 'tier-gold' },
+  { key: 'insane',         label: 'INSANE',         min: 43, max: 46, cls: 'tier-gold' },
+  { key: 'legendary',      label: 'LEGENDARY',      min: 46, max: Infinity, cls: 'tier-legendary' },
+]
+
 export function sizeTier(lenInput) {
   const n = parseFloat(lenInput)
   if (isNaN(n) || n < 22) return null
-  if (n < 25) return { label: 'GOOD JOB', cls: 'tier-neutral' }
-  if (n < 28) return { label: 'SOLID', cls: 'tier-green' }
-  if (n < 34) return { label: 'GOT EM!', cls: 'tier-green' }
-  if (n < 38) return { label: 'LUNKER', cls: 'tier-blue' }
-  if (n < 40) return { label: 'BIG MOMMA', cls: 'tier-blue' }
-  if (n < 43) return { label: 'CERTIFIED SLOB', cls: 'tier-gold' }
-  if (n < 46) return { label: 'INSANE', cls: 'tier-gold' }
-  return { label: 'LEGENDARY', cls: 'tier-legendary' }
+  const t = TIERS.find((t) => n >= t.min && n < t.max)
+  return t ? { label: t.label, cls: t.cls } : TIERS[TIERS.length - 1]
 }
 
 export const tierIcon = {
