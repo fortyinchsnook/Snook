@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import Mascot from '../components/Mascot'
 
 export default function Auth() {
   const [mode, setMode] = useState('signin') // 'signin' | 'signup'
@@ -40,6 +41,7 @@ export default function Auth() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="brand" style={{ textAlign: 'center', marginBottom: 18 }}>
+          <Mascot variant="calm" className="mascot-lg" />
           <h1>40" SNOOK<br />CLUB</h1>
           <div className="tagline">🎣 CERTIFIED · LIARS · PROVE IT ON THE WATER</div>
         </div>

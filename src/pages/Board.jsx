@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { sizeTier } from '../lib/sizeTier'
 import CertifiedSeal from '../components/CertifiedSeal'
+import Mascot from '../components/Mascot'
 
-function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser }) {
+function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged }) {
   const t = sizeTier(c.length)
   const agreeCount = votes.filter((v) => v.value === 'agree').length
   const disagreeCount = votes.filter((v) => v.value === 'disagree').length
@@ -12,6 +13,14 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser }) {
 
   return (
     <div className="lb-row">
+      <button
+        className="flag-btn"
+        title={flagged ? 'Reported — thanks' : 'Report this post'}
+        disabled={flagged}
+        onClick={() => onFlag(c.id)}
+      >
+        {flagged ? '✓' : '🚩'}
+      </button>
       <div className={`rank ${rank === 1 ? 'gold' : ''}`}>{rank}</div>
       <div className="thumb">
         {c.photo_url ? (
@@ -73,6 +82,7 @@ export default function Board({ session, onSelectUser }) {
   const [view, setView] = useState('certified')
   const [catches, setCatches] = useState([])
   const [votesByCatch, setVotesByCatch] = useState({})
+  const [flaggedIds, setFlaggedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
 
   async function loadData() {
@@ -115,6 +125,16 @@ export default function Board({ session, onSelectUser }) {
     loadData()
   }
 
+  async function handleFlag(catchId) {
+    if (flaggedIds.has(catchId)) return
+    // optimistic — mark it flagged locally right away so the button
+    // disables instantly, regardless of what the server says
+    setFlaggedIds((prev) => new Set(prev).add(catchId))
+    await supabase.from('flags').insert({ catch_id: catchId, reporter_id: session.user.id })
+    // the insert firing a database webhook → edge function → email
+    // happens entirely server-side; nothing else to do here
+  }
+
   const certified = catches.filter((c) => c.verification === 'certified')
   const liars = catches.filter((c) => c.verification === 'liar')
   const combined = [...catches].slice(0, 8)
@@ -138,7 +158,7 @@ export default function Board({ session, onSelectUser }) {
 
       <div className="section-label">
         {view === 'certified' && <><CertifiedSeal size={46} uid="sec" /> Certified Leaderboard <small>&nbsp;— bump board or tape in frame</small></>}
-        {view === 'allegedly' && <><span className="badge-icon">🤥</span> Liars Leaderboard <small>&nbsp;— self-reported, community judged</small></>}
+        {view === 'allegedly' && <><Mascot variant="skeptical" className="mascot-sm" /> Liars Leaderboard <small>&nbsp;— self-reported, community judged</small></>}
         {view === 'combined' && <><span className="badge-icon">🏆</span> Combined Top Catches <small>&nbsp;— tier badge always shown</small></>}
       </div>
 
@@ -157,6 +177,8 @@ export default function Board({ session, onSelectUser }) {
               myVote={(votesByCatch[c.id] || []).find((v) => v.user_id === session.user.id)?.value}
               onVote={handleVote}
               onSelectUser={onSelectUser}
+              onFlag={handleFlag}
+              flagged={flaggedIds.has(c.id)}
               showAgree
             />
           ))}

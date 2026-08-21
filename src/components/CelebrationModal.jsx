@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { tierIcon } from '../lib/sizeTier'
+import Mascot from './Mascot'
 
 const CONFETTI_COLORS = ['#2FE6D9', '#FFC93C', '#B26BFF', '#3ADB7A', '#FF5A36', '#E7EDF2']
 
@@ -38,7 +38,7 @@ export default function CelebrationModal({ result, onClose }) {
             }}
           />
         ))}
-        <div className="icon-row">{tierIcon[tier.cls] || '🎣'}</div>
+        <div className="icon-row"><Mascot variant="hype" className="mascot-lg" /></div>
         <div className={`slogan ${tier.cls}`}>{tier.label}!</div>
         <div className={`len-big ${tier.cls}`}>{length}"</div>
         <div className="sub">logged to the board</div>

@@ -115,3 +115,25 @@ create policy "catch photos are publicly readable"
 create policy "authenticated users can upload catch photos"
   on storage.objects for insert
   with check (bucket_id = 'catch-photos' and auth.role() = 'authenticated');
+
+-- ============================================================
+-- MODERATION — flagging + email alerts
+-- ============================================================
+
+create table if not exists flags (
+  id uuid primary key default gen_random_uuid(),
+  catch_id uuid references catches(id) on delete cascade not null,
+  reporter_id uuid references profiles(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  unique (catch_id, reporter_id) -- one flag per person per catch, no spam-clicking
+);
+
+alter table flags enable row level security;
+
+-- deliberately no public select policy — only you (via the Supabase
+-- dashboard's Table Editor, using your own login) can read flags.
+-- Regular users can create a flag but never see who else flagged what.
+
+create policy "users can flag a catch"
+  on flags for insert
+  with check (auth.uid() = reporter_id);
