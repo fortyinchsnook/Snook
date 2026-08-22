@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { sizeTier } from '../lib/sizeTier'
+import { tierFor } from '../lib/sizeTier'
 import { voteVerdict, VOTES_UNTIL_VERDICT } from '../lib/voteVerdict'
 import CertifiedSeal from '../components/CertifiedSeal'
 import Mascot from '../components/Mascot'
@@ -9,7 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 const PAGE_SIZE = 10
 
 function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onFlag, flagged, onOpen, isMine, onRequestDelete, isGuest, onRequireAuth }) {
-  const t = sizeTier(c.length)
+  const t = tierFor(c.length, c.verification)
   const agreeCount = votes.filter((v) => v.value === 'agree').length
   const disagreeCount = votes.filter((v) => v.value === 'disagree').length
   const total = agreeCount + disagreeCount
@@ -61,18 +61,6 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
           {c.profiles?.handle || 'angler'}
         </button>
         <div className="sub">📍 {c.county} · {new Date(c.created_at).toLocaleDateString()}</div>
-        <div className="tags-row">
-          {c.verification === 'certified' ? (
-            <span className="tier-tag cert">
-              <CertifiedSeal size={15} uid={`row-${c.id}`} /> CERTIFIED
-            </span>
-          ) : (
-            <span className="tier-tag alleg">🤥 LIAR</span>
-          )}
-          {c.spot_type && <span className="meta-tag">{c.spot_type}</span>}
-          {c.lure && <span className="meta-tag">🎣 {c.lure}</span>}
-          {commentCount > 0 && <span className="meta-tag comment-tag">💬 {commentCount}</span>}
-        </div>
       </div>
       <div className="length-num">
         <div className={`num ${t ? t.cls : ''}`}>
@@ -90,6 +78,7 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
             ) : (
               'no votes yet'
             )}
+            {t && <div className="tier-label">{t.label}</div>}
           </div>
         ) : (
           t && <div className="tier-label">{t.label}</div>
@@ -110,6 +99,18 @@ function CatchRow({ c, rank, votes, myVote, onVote, showAgree, onSelectUser, onF
             </button>
           </div>
         )}
+      </div>
+      <div className="tags-row">
+        {c.verification === 'certified' ? (
+          <span className="tier-tag cert">
+            <CertifiedSeal size={15} uid={`row-${c.id}`} /> CERTIFIED
+          </span>
+        ) : (
+          <span className="tier-tag alleg">🤥 LIAR</span>
+        )}
+        {c.spot_type && <span className="meta-tag">{c.spot_type}</span>}
+        {c.lure && <span className="meta-tag">🎣 {c.lure}</span>}
+        {commentCount > 0 && <span className="meta-tag comment-tag">💬 {commentCount}</span>}
       </div>
     </div>
   )

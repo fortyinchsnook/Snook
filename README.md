@@ -138,6 +138,38 @@ If all of that works, you have a real, working app.
 
 ## Changelog
 
+- **Fixed: "Certified Slob" showing up on unverified Liar catches.** Turns
+  out this was happening in two real spots — the catch detail page's tag
+  ("LIAR · CERTIFIED SLOB") and the celebration popup after logging a Liar
+  catch — both were pulling the Certified-flavored tier names regardless
+  of verification. Liar catches now use their own ladder: Sure, Buddy →
+  If You Say So → Suspiciously Specific → Tall Tale Lunker → Big
+  Momma...Allegedly → Fish Story Slob → Hard to Swallow → Loch Ness Snook.
+  Same size ranges and colors as the Certified ladder, just the naming
+  fixed. Also now shown as a small label under the vote verdict on the
+  Liars leaderboard itself, so the size context isn't missing there either.
+- **Fixed: leaderboard cards collapsing into a vertical stack on some
+  phones.** The card's layout is rebuilt to explicitly place every piece
+  (rank, thumb, name, tags, length) on its own named grid position instead
+  of relying on the browser to figure it out — plus the tag pills now sit
+  in their own full-width row below the compact top row instead of being
+  squeezed into a narrow middle column, which was the most likely root
+  cause. This was confirmed happening identically across two different
+  browsers on the same device, so it's fixed at the structural level
+  rather than patched for one browser's quirk.
+- **Fixed: phone back button exiting the app.** Opening someone else's
+  profile, a catch's detail view, or Terms & Privacy now pushes a real
+  browser history entry — so the hardware/gesture back button (and every
+  in-app "← Back" button, which now goes through the same path) steps back
+  within the app instead of falling through to whatever was open before
+  the site. Switching between the bottom nav's main tabs (Board/Log
+  Catch/Education/your own Profile) intentionally isn't part of this —
+  that's standard behavior, not something back-button history usually
+  covers in any app.
+
+**No database changes and no new setup steps for this batch** — it's all
+front-end code, so `npm install` + push is all that's needed.
+
 - **Vote verdict badges on Liars catches** — instead of just a raw
   percentage, a Liar's catch with at least 5 total votes now shows a
   color-coded verdict: ✅ Community Verified (80%+), 🤔 Mostly Believed

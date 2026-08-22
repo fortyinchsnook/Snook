@@ -17,6 +17,34 @@ export function sizeTier(lenInput) {
   return t ? { label: t.label, cls: t.cls } : TIERS[TIERS.length - 1]
 }
 
+// Same size boundaries and colors as the Certified ladder, but the Liars
+// board shouldn't ever say "Certified" on an unverified catch — these
+// names carry the same escalating doubt as the vote-verdict badges.
+export const LIAR_TIERS = [
+  { key: 'good-job',       label: 'SURE, BUDDY',              min: 22, max: 25, cls: 'tier-neutral' },
+  { key: 'solid',          label: 'IF YOU SAY SO',             min: 25, max: 28, cls: 'tier-green' },
+  { key: 'got-em',         label: 'SUSPICIOUSLY SPECIFIC',     min: 28, max: 34, cls: 'tier-green' },
+  { key: 'lunker',         label: 'TALL TALE LUNKER',          min: 34, max: 38, cls: 'tier-blue' },
+  { key: 'big-momma',      label: 'BIG MOMMA... ALLEGEDLY',    min: 38, max: 40, cls: 'tier-blue' },
+  { key: 'certified-slob', label: 'FISH STORY SLOB',           min: 40, max: 43, cls: 'tier-gold' },
+  { key: 'insane',         label: 'HARD TO SWALLOW',           min: 43, max: 46, cls: 'tier-gold' },
+  { key: 'legendary',      label: 'LOCH NESS SNOOK',           min: 46, max: Infinity, cls: 'tier-legendary' },
+]
+
+export function liarTier(lenInput) {
+  const n = parseFloat(lenInput)
+  if (isNaN(n) || n < 22) return null
+  const t = LIAR_TIERS.find((t) => n >= t.min && n < t.max)
+  return t ? { label: t.label, cls: t.cls } : LIAR_TIERS[LIAR_TIERS.length - 1]
+}
+
+// Picks the right ladder based on whether the catch is verified —
+// use this anywhere a tier label is shown next to a catch's length,
+// instead of calling sizeTier directly.
+export function tierFor(lenInput, verification) {
+  return verification === 'liar' ? liarTier(lenInput) : sizeTier(lenInput)
+}
+
 export const tierIcon = {
   'tier-neutral': '🙂',
   'tier-green': '💪',

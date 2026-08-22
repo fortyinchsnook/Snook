@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { sizeTier } from '../lib/sizeTier'
+import { tierFor } from '../lib/sizeTier'
 import CertifiedSeal from '../components/CertifiedSeal'
 import ConfirmDialog from './ConfirmDialog'
 import { shareCatch } from '../lib/shareImage'
@@ -84,7 +84,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
         photoUrl: c.photo_url,
         handle: c.profiles?.handle,
         length: c.length,
-        tierLabel: sizeTier(c.length)?.label,
+        tierLabel: tierFor(c.length, c.verification)?.label,
         verification: c.verification,
       })
     } catch (err) {
@@ -115,7 +115,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
     )
   }
 
-  const t = sizeTier(c.length)
+  const t = tierFor(c.length, c.verification)
   const isMine = session && c.user_id === session.user.id
   const charsLeft = 120 - commentText.length
 

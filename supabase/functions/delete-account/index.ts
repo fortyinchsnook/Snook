@@ -9,11 +9,26 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Browsers send a CORS "preflight" OPTIONS request before the real POST
+// when calling this from a different origin (your site calling Supabase's
+// function domain counts as cross-origin). Without these headers on every
+// response — including errors — the browser blocks the request entirely
+// before it ever reaches this code.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response('Missing Authorization header', { status: 401 })
+      return new Response('Missing Authorization header', { status: 401, headers: corsHeaders })
     }
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
@@ -26,22 +41,22 @@ Deno.serve(async (req) => {
     })
     const { data: { user }, error: userError } = await callerClient.auth.getUser()
     if (userError || !user) {
-      return new Response('Invalid or expired session', { status: 401 })
+      return new Response('Invalid or expired session', { status: 401, headers: corsHeaders })
     }
 
     // delete with admin privileges — only ever this exact user's own id
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id)
     if (deleteError) {
-      return new Response(deleteError.message, { status: 500 })
+      return new Response(deleteError.message, { status: 500, headers: corsHeaders })
     }
 
     // profiles.id -> auth.users(id) on delete cascade already handles
     // wiping the profile, and catches/votes/comments/flags all cascade
     // from there — nothing else to clean up manually.
 
-    return new Response('ok', { status: 200 })
+    return new Response('ok', { status: 200, headers: corsHeaders })
   } catch (err) {
-    return new Response(`Function error: ${err.message}`, { status: 500 })
+    return new Response(`Function error: ${err.message}`, { status: 500, headers: corsHeaders })
   }
 })

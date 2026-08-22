@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
-import { sizeTier, FL_COUNTIES, TX_COUNTIES, SPOT_TYPES } from '../lib/sizeTier'
+import { tierFor, FL_COUNTIES, TX_COUNTIES, SPOT_TYPES } from '../lib/sizeTier'
 import CelebrationModal from '../components/CelebrationModal'
 
 export default function LogCatch({ session }) {
@@ -16,7 +16,7 @@ export default function LogCatch({ session }) {
   const [error, setError] = useState('')
   const [celebration, setCelebration] = useState(null)
 
-  const tier = sizeTier(length)
+  const tier = tierFor(length, verification)
   const lengthTouched = length !== ''
   const lengthNum = parseFloat(length)
   const lengthTooBig = lengthTouched && !isNaN(lengthNum) && lengthNum > 55
@@ -101,30 +101,33 @@ export default function LogCatch({ session }) {
       <div className="form-card">
         <div className="field">
           <label>Photo <span style={{ fontWeight: 600, color: 'var(--red)' }}>(required)</span></label>
-          <div className="photo-upload">
-            {photoPreview ? (
-              <>
-                <img src={photoPreview} alt="catch preview" />
-                <span
-                  className="remove-photo"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setPhotoFile(null)
-                    setPhotoPreview(null)
-                  }}
-                >
-                  ✕
-                </span>
-              </>
-            ) : (
-              <>
+          {photoPreview ? (
+            <div className="photo-upload has-preview">
+              <img src={photoPreview} alt="catch preview" />
+              <span
+                className="remove-photo"
+                onClick={() => {
+                  setPhotoFile(null)
+                  setPhotoPreview(null)
+                }}
+              >
+                ✕
+              </span>
+            </div>
+          ) : (
+            <div className="photo-upload-buttons">
+              <label className="photo-choice-btn">
                 <span className="icon">📷</span>
-                <span className="label">Take Photo or Upload</span>
-                <span className="sub">Tap to open your camera or photo library</span>
-              </>
-            )}
-            <input type="file" accept="image/*" onChange={handlePhotoChange} />
-          </div>
+                <span className="label">Take Photo</span>
+                <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} />
+              </label>
+              <label className="photo-choice-btn">
+                <span className="icon">🖼️</span>
+                <span className="label">Choose from Library</span>
+                <input type="file" accept="image/*" onChange={handlePhotoChange} />
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="field">

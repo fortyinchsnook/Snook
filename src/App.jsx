@@ -75,6 +75,77 @@ export default function App() {
     setSignInPromptMsg(message)
   }
 
+  // ---------------------------------------------------------------
+  // Real browser history for "drill-down" views (someone else's
+  // profile, a catch's detail page, Terms & Privacy, the sign-in
+  // screen reached from guest browsing). Without this, the phone's
+  // back button has nothing of ours to step back through, so it
+  // falls straight through to whatever was open before the site —
+  // which looks like the app just exiting.
+  //
+  // Bottom-nav tab switches (Board/Log Catch/Education/your own
+  // Profile) are deliberately NOT pushed here — tab switches aren't
+  // normally undo-able via hardware back in any app, and treating
+  // every tab tap as a back-stack entry would make the back button
+  // annoying to use for completely different reasons.
+  // ---------------------------------------------------------------
+  useEffect(() => {
+    window.history.replaceState({ view: 'base' }, '')
+
+    function onPopState(e) {
+      const s = e.state
+      if (!s || s.view === 'base') {
+        setSelectedCatchId(null)
+        setShowLegal(false)
+        setForceAuth(false)
+        setViewedUserId(null)
+      } else if (s.view === 'profile') {
+        setSelectedCatchId(null)
+        setShowLegal(false)
+        setForceAuth(false)
+        setViewedUserId(s.userId)
+        setPage('profile')
+      } else if (s.view === 'detail') {
+        setSelectedCatchId(s.catchId)
+      } else if (s.view === 'legal') {
+        setShowLegal(true)
+      } else if (s.view === 'auth') {
+        setForceAuth(true)
+      }
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  function openProfile(userId) {
+    window.history.pushState({ view: 'profile', userId }, '')
+    setViewedUserId(userId)
+    setShowLegal(false)
+    setPage('profile')
+  }
+
+  function openCatch(catchId) {
+    window.history.pushState({ view: 'detail', catchId }, '')
+    setSelectedCatchId(catchId)
+  }
+
+  function openLegal() {
+    window.history.pushState({ view: 'legal' }, '')
+    setShowLegal(true)
+  }
+
+  function openAuth() {
+    window.history.pushState({ view: 'auth' }, '')
+    setForceAuth(true)
+  }
+
+  // used by every overlay's own "← Back" / "✕" button, so the in-app
+  // button and the hardware back button always behave identically
+  function closeOverlay() {
+    window.history.back()
+  }
+
   if (loadingSession) {
     return <div className="loading-screen">Loading 40" Snook Club…</div>
   }
@@ -84,7 +155,7 @@ export default function App() {
   }
 
   if (forceAuth) {
-    return <Auth onCancel={() => setForceAuth(false)} />
+    return <Auth onCancel={closeOverlay} />
   }
 
   const isGuest = !session
@@ -101,12 +172,6 @@ export default function App() {
     if (newPage === 'profile') setViewedUserId(null)
     setShowLegal(false)
     setPage(newPage)
-  }
-
-  function handleSelectUser(userId) {
-    setViewedUserId(userId)
-    setShowLegal(false)
-    setPage('profile')
   }
 
   function handleDataChanged() {
@@ -132,7 +197,7 @@ export default function App() {
     <SignInPrompt
       message={signInPromptMsg}
       onClose={() => setSignInPromptMsg(null)}
-      onSignIn={() => { setSignInPromptMsg(null); setForceAuth(true) }}
+      onSignIn={() => { setSignInPromptMsg(null); openAuth() }}
     />
   )
 
@@ -140,7 +205,7 @@ export default function App() {
     return (
       <div className="wrap">
         {headerJsx}
-        <Legal onBack={() => setShowLegal(false)} />
+        <Legal onBack={closeOverlay} />
         <BottomNav active={page} onChange={handleNavChange} />
       </div>
     )
@@ -154,7 +219,7 @@ export default function App() {
         <CatchDetail
           catchId={selectedCatchId}
           session={session}
-          onClose={() => setSelectedCatchId(null)}
+          onClose={closeOverlay}
           onChanged={handleDataChanged}
           onRequireAuth={requireAuth}
         />
@@ -165,8 +230,8 @@ export default function App() {
       {page === 'board' && (
         <Board
           session={session}
-          onSelectUser={handleSelectUser}
-          onOpenCatch={setSelectedCatchId}
+          onSelectUser={openProfile}
+          onOpenCatch={openCatch}
           refreshKey={boardRefreshKey}
           onRequireAuth={requireAuth}
         />
@@ -177,14 +242,14 @@ export default function App() {
         <Profile
           session={session}
           viewUserId={viewedUserId}
-          onBack={() => setViewedUserId(null)}
-          onOpenCatch={setSelectedCatchId}
+          onBack={closeOverlay}
+          onOpenCatch={openCatch}
         />
       )}
 
       <div style={{ textAlign: 'center', padding: '0 18px 6px' }}>
         <button
-          onClick={() => setShowLegal(true)}
+          onClick={openLegal}
           style={{
             background: 'none', border: 'none', color: 'var(--muted)',
             fontSize: 11, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline',
@@ -215,7 +280,7 @@ export default function App() {
           </button>
         ) : (
           <button
-            onClick={() => setForceAuth(true)}
+            onClick={openAuth}
             style={{
               background: 'none', border: 'none', color: 'var(--teal)',
               fontSize: 12, fontWeight: 800, cursor: 'pointer', textDecoration: 'underline',
