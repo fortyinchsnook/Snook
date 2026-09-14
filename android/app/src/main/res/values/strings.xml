@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">40 Snook Club</string>
+    <string name="title_activity_main">40 Snook Club</string>
+    <string name="package_name">com.fortyinchsnook.app</string>
+    <string name="custom_url_scheme">com.fortyinchsnook.app</string>
+</resources>
