@@ -115,29 +115,28 @@ export default function Auth({ onCancel }) {
     if (error) setError(error.message)
   }
 
-  // When running inside the native app, Google/Apple sign-in opens the
-  // system browser, then hands control back via a custom URL (the scheme
-  // above). Capacitor fires 'appUrlOpen' with that URL — we grab the
-  // session out of it here instead of letting it fall back to the website.
-  useEffect(() => {
-    if (!isNative()) return
-    let remove
-    import('@capacitor/app')
-      .then(({ App: CapacitorApp }) => {
-        CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
-          if (!url || !url.startsWith(`${NATIVE_AUTH_SCHEME}://`)) return
-          const { error } = await supabase.auth.exchangeCodeForSession(url)
-          if (error) setError(error.message)
-        }).then((handle) => { remove = handle })
-      })
-      .catch(() => {
-        // @capacitor/app isn't installed — native OAuth return will silently
-        // fail closed instead of bouncing to the website. Run:
-        //   npm install @capacitor/app && npx cap sync
-        console.warn('@capacitor/app not found; native OAuth redirect will not complete.')
-      })
-    return () => { remove?.remove() }
-  }, [])
+  // NOTE: the native-app deep-link listener (Capacitor's 'appUrlOpen'
+  // event, via @capacitor/app) has been pulled out for now — that package
+  // isn't installed as a project dependency yet (the Android build is on
+  // hold), and a literal `import('@capacitor/app')` breaks the WEB
+  // production build even wrapped in a runtime isNative() guard, because
+  // bundlers resolve dynamic imports at build time regardless of whether
+  // the code path ever runs. Once the Android work resumes: run
+  // `npm install @capacitor/app`, then re-add a useEffect here that does:
+  //
+  //   useEffect(() => {
+  //     if (!isNative()) return
+  //     import('@capacitor/app').then(({ App: CapacitorApp }) => {
+  //       CapacitorApp.addListener('appUrlOpen', async ({ url }) => {
+  //         if (!url || !url.startsWith(`${NATIVE_AUTH_SCHEME}://`)) return
+  //         const { error } = await supabase.auth.exchangeCodeForSession(url)
+  //         if (error) setError(error.message)
+  //       })
+  //     })
+  //   }, [])
+  //
+  // The redirectTo passed in handleOAuth above is harmless to leave in
+  // place on web (isNative() is false there), so that part stays as-is.
 
   return (
     <div className="auth-wrap">
