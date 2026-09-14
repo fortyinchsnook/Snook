@@ -12,6 +12,7 @@ export default function LogCatch({ session }) {
   const [blurb, setBlurb] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [capturedLive, setCapturedLive] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [celebration, setCelebration] = useState(null)
@@ -22,10 +23,11 @@ export default function LogCatch({ session }) {
   const lengthTooBig = lengthTouched && !isNaN(lengthNum) && lengthNum > 55
   const lengthInvalid = lengthTouched && !tier
 
-  function handlePhotoChange(e) {
+  function handlePhotoChange(e, fromLiveCamera) {
     const file = e.target.files[0]
     if (!file) return
     setPhotoFile(file)
+    setCapturedLive(fromLiveCamera)
     const reader = new FileReader()
     reader.onload = (ev) => setPhotoPreview(ev.target.result)
     reader.readAsDataURL(file)
@@ -39,6 +41,7 @@ export default function LogCatch({ session }) {
     setBlurb('')
     setPhotoFile(null)
     setPhotoPreview(null)
+    setCapturedLive(false)
   }
 
   async function handleSubmit() {
@@ -78,6 +81,7 @@ export default function LogCatch({ session }) {
         lure: lure || null,
         blurb: blurb.trim() || null,
         photo_url: photoUrl,
+        captured_live: capturedLive,
       })
       if (insertError) throw insertError
 
@@ -109,6 +113,7 @@ export default function LogCatch({ session }) {
                 onClick={() => {
                   setPhotoFile(null)
                   setPhotoPreview(null)
+                  setCapturedLive(false)
                 }}
               >
                 ✕
@@ -119,12 +124,12 @@ export default function LogCatch({ session }) {
               <label className="photo-choice-btn">
                 <span className="icon">📷</span>
                 <span className="label">Take Photo</span>
-                <input type="file" accept="image/*" capture="environment" onChange={handlePhotoChange} />
+                <input type="file" accept="image/*" capture="environment" onChange={(e) => handlePhotoChange(e, true)} />
               </label>
               <label className="photo-choice-btn">
                 <span className="icon">🖼️</span>
                 <span className="label">Choose from Library</span>
-                <input type="file" accept="image/*" onChange={handlePhotoChange} />
+                <input type="file" accept="image/*" onChange={(e) => handlePhotoChange(e, false)} />
               </label>
             </div>
           )}

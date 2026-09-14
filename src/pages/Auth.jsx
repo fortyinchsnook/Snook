@@ -114,10 +114,6 @@ export default function Auth({ onCancel }) {
             <button className="oauth-btn apple" onClick={() => handleOAuth('apple')}>
               <span></span> Continue with Apple
             </button>
-            <div className="hint" style={{ textAlign: 'center', marginTop: 8 }}>
-              Apple sign-in only works once Sign in with Apple is configured in
-              your Supabase + Apple Developer account — see the README.
-            </div>
           </>
         )}
 
