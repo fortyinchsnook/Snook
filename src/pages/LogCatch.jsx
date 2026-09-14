@@ -3,6 +3,14 @@ import { supabase } from '../supabaseClient'
 import { tierFor, FL_COUNTIES, TX_COUNTIES, SPOT_TYPES } from '../lib/sizeTier'
 import CelebrationModal from '../components/CelebrationModal'
 
+// Mirrors the allow-list enforced server-side on the catch-photos storage
+// bucket (see the Supabase SQL / dashboard setting) — this copy only
+// exists to give a friendly, instant error instead of making people wait
+// for the upload to fail. A user could bypass this client check entirely;
+// the bucket-level restriction is what actually protects us.
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024 // 10MB
+
 export default function LogCatch({ session }) {
   const [verification, setVerification] = useState('certified')
   const [length, setLength] = useState('')
@@ -26,6 +34,17 @@ export default function LogCatch({ session }) {
   function handlePhotoChange(e, fromLiveCamera) {
     const file = e.target.files[0]
     if (!file) return
+    setError('')
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      setError('That file doesn\'t look like a photo. Please upload a JPG, PNG, WEBP, or HEIC image.')
+      e.target.value = ''
+      return
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setError('That photo is too large — please use one under 10MB.')
+      e.target.value = ''
+      return
+    }
     setPhotoFile(file)
     setCapturedLive(fromLiveCamera)
     const reader = new FileReader()
@@ -64,8 +83,16 @@ export default function LogCatch({ session }) {
         const path = `${session.user.id}/${Date.now()}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('catch-photos')
-          .upload(path, photoFile)
-        if (uploadError) throw uploadError
+          .upload(path, photoFile, { contentType: photoFile.type })
+        if (uploadError) {
+          // If someone bypasses the client-side check above, this is the
+          // real backstop — Supabase rejects it here based on the
+          // allowed_mime_types / file_size_limit set on the bucket itself.
+          if (/mime type|not allowed|exceeded the maximum allowed size/i.test(uploadError.message || '')) {
+            throw new Error('That file was rejected — please upload a JPG, PNG, WEBP, or HEIC photo under 10MB.')
+          }
+          throw uploadError
+        }
         const { data: publicUrlData } = supabase.storage
           .from('catch-photos')
           .getPublicUrl(path)
