@@ -99,20 +99,37 @@ export default function LogCatch({ session }) {
         photoUrl = publicUrlData.publicUrl
       }
 
-      const { error: insertError } = await supabase.from('catches').insert({
-        user_id: session.user.id,
-        length: parseFloat(length),
-        verification,
-        county,
-        spot_type: spotType || null,
-        lure: lure || null,
-        blurb: blurb.trim() || null,
-        photo_url: photoUrl,
-        captured_live: capturedLive,
-      })
+      const { data: newCatch, error: insertError } = await supabase
+        .from('catches')
+        .insert({
+          user_id: session.user.id,
+          length: parseFloat(length),
+          verification,
+          county,
+          spot_type: spotType || null,
+          lure: lure || null,
+          blurb: blurb.trim() || null,
+          photo_url: photoUrl,
+          captured_live: capturedLive,
+        })
+        .select()
+        .single()
       if (insertError) throw insertError
 
-      setCelebration({ length, tier })
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('handle')
+        .eq('id', session.user.id)
+        .single()
+
+      setCelebration({
+        length,
+        tier,
+        catchId: newCatch?.id,
+        photoUrl,
+        verification,
+        handle: myProfile?.handle,
+      })
       resetForm()
     } catch (err) {
       setError(err.message)

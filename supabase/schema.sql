@@ -187,3 +187,11 @@ alter table catches add constraint catches_length_check check (length >= 22 and 
 --   delete from catches where photo_url is null;
 -- before running the line below.
 alter table catches alter column photo_url set not null;
+
+-- ============================================================
+-- LIVE CAMERA TRACKING — distinguishes a photo taken through the
+-- app's live camera capture from one picked out of the photo library.
+-- This is the actual eligibility flag for the $1-per-catch donation
+-- pledge: only certified + captured_live = true catches qualify.
+-- ============================================================
+alter table catches add column if not exists captured_live boolean not null default false;

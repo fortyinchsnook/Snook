@@ -112,26 +112,57 @@ export async function buildShareImage({ photoUrl, handle, length, tierLabel, ver
 }
 
 // Shares a catch via the native share sheet when available; falls back
-// to triggering a plain download if the browser can't share files.
+// to sharing text+link only, then finally to a plain image download with
+// the link copied to the clipboard, for browsers with no Web Share API
+// support at all (most desktop browsers).
+//
+// `catchId` is used to build a real link back to this exact catch
+// (40inchsnook.com/?catch=<id>) — platforms that preserve shared text
+// (Twitter/X, Facebook, SMS, WhatsApp, Messenger) will carry that link
+// along with the image. Instagram in particular drops any text/url
+// alongside a shared image, which is exactly why the branding is also
+// baked directly into the image itself above.
 export async function shareCatch(catchData) {
+  const shareUrl = catchData.catchId
+    ? `${window.location.origin}/?catch=${catchData.catchId}`
+    : window.location.origin
+  const title = '40" Snook Club'
+  const text = `🎣 Check out this ${catchData.length}" snook on 40" Snook Club!`
+
   const blob = await buildShareImage(catchData)
   const file = new File([blob], 'snook-catch.png', { type: 'image/png' })
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    await navigator.share({
-      files: [file],
-      title: '40" Snook Club',
-      text: `Check out this ${catchData.length}" snook on 40 Snook Club!`,
-    })
+    try {
+      await navigator.share({ files: [file], title, text, url: shareUrl })
+      return 'shared'
+    } catch (err) {
+      if (err?.name === 'AbortError') return 'cancelled'
+      // Some platforms accept files but reject the combination with
+      // text/url — retry with just the file if that's what happened.
+      await navigator.share({ files: [file], title, text })
+      return 'shared'
+    }
+  }
+
+  if (navigator.share) {
+    await navigator.share({ title, text, url: shareUrl })
     return 'shared'
   }
 
-  // fallback: download the image
+  // No Web Share API at all (most desktop browsers) — download the
+  // branded image and copy the link so there's still something to paste.
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = 'snook-catch.png'
   a.click()
   URL.revokeObjectURL(url)
-  return 'downloaded'
+
+  try {
+    await navigator.clipboard.writeText(shareUrl)
+    return 'downloaded-and-copied'
+  } catch {
+    return 'downloaded'
+  }
 }

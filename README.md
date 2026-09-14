@@ -138,6 +138,24 @@ If all of that works, you have a real, working app.
 
 ## Changelog
 
+- **Removed the Apple sign-in setup hint** from the sign-in screen — it was
+  developer-facing reminder text, not meant for real users to see.
+
+- **Tracks whether a photo came from the live in-app camera or the photo
+  library.** New `captured_live` boolean column on `catches`, set
+  automatically based on which button was tapped ("Take Photo" vs "Choose
+  from Library") when logging a catch. This is the actual eligibility
+  criterion for the donation pledge — a Certified catch only qualifies for
+  the $1 donation if it's `verification = 'certified' AND captured_live =
+  true`. Nothing changes visually in the app; this is purely a data flag
+  for now, ready for whatever donation-tracking UI gets built next.
+
+### One setup step for this update
+
+Run the new bottom section of `schema.sql` in Supabase's SQL editor — adds
+the `captured_live` column. This one's simple (no destructive-operation
+warning, just adds a column with a default), safe to run on its own.
+
 - **Fixed: "Certified Slob" showing up on unverified Liar catches.** Turns
   out this was happening in two real spots — the catch detail page's tag
   ("LIAR · CERTIFIED SLOB") and the celebration popup after logging a Liar

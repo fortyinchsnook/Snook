@@ -5,7 +5,7 @@ import CertifiedSeal from '../components/CertifiedSeal'
 import ConfirmDialog from './ConfirmDialog'
 import { shareCatch } from '../lib/shareImage'
 
-export default function CatchDetail({ catchId, session, onClose, onChanged, onRequireAuth }) {
+export default function CatchDetail({ catchId, session, onClose, onChanged, onRequireAuth, onSelectUser }) {
   const [c, setC] = useState(null)
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -14,6 +14,7 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
   const [confirmDeleteCatch, setConfirmDeleteCatch] = useState(false)
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null)
   const [sharing, setSharing] = useState(false)
+  const [shareMsg, setShareMsg] = useState('')
 
   async function load() {
     setLoading(true)
@@ -79,19 +80,31 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
   async function handleShare() {
     if (!c) return
     setSharing(true)
+    setShareMsg('')
+    let msg = ''
     try {
-      await shareCatch({
+      const result = await shareCatch({
         photoUrl: c.photo_url,
         handle: c.profiles?.handle,
         length: c.length,
         tierLabel: tierFor(c.length, c.verification)?.label,
         verification: c.verification,
+        catchId: c.id,
       })
+      if (result === 'downloaded-and-copied') {
+        msg = 'Image saved — link copied, paste it into your post!'
+      } else if (result === 'downloaded') {
+        msg = 'Image saved to your device.'
+      }
     } catch (err) {
       // user cancelling the native share sheet also lands here — not an error worth surfacing
       if (err?.name !== 'AbortError') console.error(err)
     } finally {
       setSharing(false)
+      if (msg) {
+        setShareMsg(msg)
+        setTimeout(() => setShareMsg(''), 4000)
+      }
     }
   }
 
@@ -130,6 +143,11 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
               {sharing ? '…' : '📤'}
             </button>
           </div>
+          {shareMsg && (
+            <div className="hint" style={{ color: 'var(--green)', textAlign: 'center', margin: '4px 16px 0' }}>
+              {shareMsg}
+            </div>
+          )}
 
           <div className="detail-photo">
             {c.photo_url ? (
@@ -142,7 +160,13 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
           <div className="detail-body">
             <div className="detail-head">
               <div>
-                <div className="detail-angler">{c.profiles?.handle || 'angler'}</div>
+                <button
+                  className="detail-angler"
+                  onClick={() => onSelectUser?.(c.user_id)}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationColor: 'transparent' }}
+                >
+                  {c.profiles?.handle || 'angler'}
+                </button>
                 <div className="detail-sub">📍 {c.county} · {new Date(c.created_at).toLocaleDateString()}</div>
               </div>
               <div className={`detail-len ${t ? t.cls : ''}`}>{c.length}"</div>
@@ -182,7 +206,13 @@ export default function CatchDetail({ catchId, session, onClose, onChanged, onRe
                     <button className="c-del" onClick={() => setConfirmDeleteComment(cm.id)}>✕</button>
                   )}
                   <div className="c-head">
-                    <span className="c-handle">@{cm.profiles?.handle || 'angler'}</span>
+                    <button
+                      className="c-handle"
+                      onClick={() => onSelectUser?.(cm.user_id)}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textDecoration: 'underline', textDecorationColor: 'transparent' }}
+                    >
+                      @{cm.profiles?.handle || 'angler'}
+                    </button>
                     <span className="c-time">{new Date(cm.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="c-text">{cm.text}</div>

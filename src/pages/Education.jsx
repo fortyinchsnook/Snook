@@ -1,3 +1,5 @@
+import { getSeasonStatus, getRegionLabel } from '../lib/snookSeason'
+
 const TIPS = [
   { title: 'Wet your hands first', body: 'Dry hands and towels strip the protective slime coat, leaving the fish open to infection after release.' },
   { title: 'Minimize air exposure', body: "Keep the fish in or over the water. Aim for under 10 seconds out of the water for photos — snook can't breathe air any better than we can breathe water." },
@@ -9,11 +11,21 @@ const TIPS = [
 ]
 
 export default function Education() {
+  const gulfStatus = getSeasonStatus('gulf')
+  const atlanticStatus = getSeasonStatus('atlantic')
+
   return (
     <section className="page active">
       <div className="page-title">📘 Be a Steward</div>
-      <div className="status-pill" style={{ marginLeft: 18 }}>
-        <span className="dot"></span> GULF COAST · SARASOTA BAY — OPEN THRU NOV 30
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 18, alignItems: 'flex-start' }}>
+        <div className="status-pill" style={!gulfStatus.open ? { borderColor: 'var(--red)', color: 'var(--red)' } : undefined}>
+          <span className="dot" style={!gulfStatus.open ? { background: 'var(--red)', boxShadow: 'none' } : undefined}></span>
+          {' '}{getRegionLabel('gulf')} — {gulfStatus.label}
+        </div>
+        <div className="status-pill" style={!atlanticStatus.open ? { borderColor: 'var(--red)', color: 'var(--red)' } : undefined}>
+          <span className="dot" style={!atlanticStatus.open ? { background: 'var(--red)', boxShadow: 'none' } : undefined}></span>
+          {' '}{getRegionLabel('atlantic')} — {atlanticStatus.label}
+        </div>
       </div>
       <div className="page-sub" style={{ marginTop: 12 }}>
         Snook are a catch-and-release fishery most of the year for a reason. Handle them right

@@ -90,7 +90,16 @@ export default function App() {
   // annoying to use for completely different reasons.
   // ---------------------------------------------------------------
   useEffect(() => {
-    window.history.replaceState({ view: 'base' }, '')
+    // If this load came from a shared link (?catch=<id>), open straight to
+    // that catch instead of the board — this is what makes shared posts
+    // actually land somewhere useful instead of just the homepage.
+    const sharedCatchId = new URLSearchParams(window.location.search).get('catch')
+    if (sharedCatchId) {
+      window.history.replaceState({ view: 'detail', catchId: sharedCatchId }, '', `?catch=${sharedCatchId}`)
+      setSelectedCatchId(sharedCatchId)
+    } else {
+      window.history.replaceState({ view: 'base' }, '')
+    }
 
     function onPopState(e) {
       const s = e.state
@@ -126,7 +135,7 @@ export default function App() {
   }
 
   function openCatch(catchId) {
-    window.history.pushState({ view: 'detail', catchId }, '')
+    window.history.pushState({ view: 'detail', catchId }, '', `?catch=${catchId}`)
     setSelectedCatchId(catchId)
   }
 
@@ -222,6 +231,7 @@ export default function App() {
           onClose={closeOverlay}
           onChanged={handleDataChanged}
           onRequireAuth={requireAuth}
+          onSelectUser={(userId) => { setSelectedCatchId(null); openProfile(userId) }}
         />
       )}
 
