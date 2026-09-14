@@ -1,0 +1,32 @@
+name: Daily Database Backup
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges -f backup.sql
+
+      - name: Push backup to the backup repo
+        env:
+          BACKUP_REPO_TOKEN: ${{ secrets.BACKUP_REPO_TOKEN }}
+        run: |
+          DATE=$(date +'%Y-%m-%d')
+          git clone https://${BACKUP_REPO_TOKEN}@github.com/fortyinchsnook/snook-club-backups.git backups-repo
+          cp backup.sql backups-repo/backup-$DATE.sql
+          cd backups-repo
+          git config user.email "backup-bot@snookclub.local"
+          git config user.name "Snook Club Backup Bot"
+          git add .
+          git commit -m "Backup for $DATE"
+          git push
